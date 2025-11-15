@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Amoxicillin 500mg",
+    "keywords": ["amoxicillin", "amox", "amox 500", "amoxicillin 500mg"],
+    "max": 10
+  },
+  {
+    "name": "Paracetamol 650mg",
+    "keywords": ["paracetamol", "pcm", "para 650", "paracetamol 650mg"],
+    "max": 3
+  },
+  {
+    "name": "Cetirizine 10mg",
+    "keywords": ["cetirizine", "cet", "ctz", "cetirizine 10mg"],
+    "max": 5
+  }
+]

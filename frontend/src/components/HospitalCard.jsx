@@ -9,7 +9,7 @@ export default function HospitalCard({ hospital }) {
         {/* Hospital Info */}
         <div>
           <h3 className="font-semibold text-lg text-gray-900">
-            {hospital.name}
+            {hospital.hospitalName}
           </h3>
           <p className="text-sm text-gray-600">
             {hospital.specialty || "General"}
@@ -31,7 +31,7 @@ export default function HospitalCard({ hospital }) {
 
       <div className="mt-4 flex justify-end">
         <Link
-          to={`/hospitals/${hospital._id}`}
+          to={`/hospitals/${hospital.slNo}`}
           className="text-blue-600 text-sm font-medium hover:underline"
         >
           View Details →

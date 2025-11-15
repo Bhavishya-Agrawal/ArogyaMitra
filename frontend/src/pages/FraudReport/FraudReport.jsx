@@ -1,63 +1,31 @@
 import React, { useEffect, useState } from "react";
 import { getFraudReport } from "../../api/billApi";
-import Loader from "../../components/Loader";
 
 export default function FraudReport() {
-  const [report, setReport] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(null);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await getFraudReport("latest");
-        setReport(res.data);
-      } catch (e) {
-        setReport(null);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    getFraudReport().then(res => setData(res.data));
   }, []);
 
-  if (loading) return <Loader />;
-  if (!report) return <div>No fraud report available.</div>;
+  if (!data) return <p>Loading...</p>;
 
   return (
-    <div className="max-w-2xl mx-auto mt-10 px-4">
-      
-      {/* Title */}
-      <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-        Fraud Report
-      </h2>
+    <div className="max-w-xl my-10 p-4">
+      <h1 className="text-xl font-bold">Fraud Report</h1>
 
-      {/* Report Card */}
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
-        {report.frauds && report.frauds.length ? (
-          <ul className="space-y-4">
-            {report.frauds.map((f, i) => (
-              <li
-                key={i}
-                className="bg-gray-50 border border-gray-200 rounded-xl p-4"
-              >
-                <div className="font-semibold text-lg text-gray-900">
-                  {f.service}
-                </div>
-
-                <div className="text-sm text-gray-700 mt-1">
-                  Charged: <span className="font-medium">₹{f.charged}</span> — Allowed:{" "}
-                  <span className="font-medium">₹{f.allowed}</span>
-                </div>
-
-                <div className="text-red-600 text-sm mt-2">
-                  {f.message}
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="text-gray-700">No fraud detected. Bill looks OK.</div>
-        )}
-      </div>
+      {data.frauds.length === 0 ? (
+        <p className="text-green-600 mt-4">No fraud detected</p>
+      ) : (
+        data.frauds.map((f, i) => (
+          <div key={i} className="mt-4 p-4 bg-red-100 border border-red-300 rounded">
+            <p><strong>Service:</strong> {f.service}</p>
+            <p><strong>Charged:</strong> ₹{f.charged}</p>
+            <p><strong>Allowed:</strong> ₹{f.allowed}</p>
+            <p className="text-red-600">{f.message}</p>
+          </div>
+        ))
+      )}
     </div>
   );
 }

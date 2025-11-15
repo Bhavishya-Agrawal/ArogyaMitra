@@ -19,6 +19,7 @@ export default function Login() {
 
     try {
       const res = await loginApi(form);
+      console.log(res);
       login(res.data);
       n("/chat");
     } catch (error) {
