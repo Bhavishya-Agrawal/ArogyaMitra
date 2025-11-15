@@ -6,19 +6,27 @@ import { useNavigate } from "react-router-dom";
 
 export default function Register() {
   const n = useNavigate();
-  const [form, setForm] = useState({ name: "", phone: "", aadhaar: "" });
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    aadhaar: "",
+    password: "",
+  });
+
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
 
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setMsg("");
+
     try {
       await registerApi(form);
       setMsg("Registration successful. Redirecting to login…");
       setTimeout(() => n("/login"), 1000);
     } catch (e) {
-      setMsg("Registration failed. Try again.");
+      setMsg(e?.response?.data?.message || "Registration failed. Try again.");
     } finally {
       setLoading(false);
     }
@@ -32,26 +40,40 @@ export default function Register() {
         Create Your Account
       </h2>
 
-      {/* Form Container */}
+      {/* Form Box */}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
         <form onSubmit={submit} className="space-y-5">
 
+          {/* Full Name */}
           <Input
             label="Full Name"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
+            required
           />
 
+          {/* Phone */}
           <Input
             label="Phone Number"
+            type="tel"
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            required
           />
 
+          {/* Aadhaar */}
           <Input
             label="Aadhaar Number"
             value={form.aadhaar}
             onChange={(e) => setForm({ ...form, aadhaar: e.target.value })}
+          />
+
+          {/* PASSWORD (NEW) */}
+          <Input
+            label="Password"
+            type="password"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
             required
           />
 
@@ -62,10 +84,11 @@ export default function Register() {
             </div>
           )}
 
-          {/* Submit Button */}
+          {/* Submit */}
           <Button type="submit" className="w-full">
-            {loading ? "Please wait…" : "Register"}
+            {loading ? "Creating Account…" : "Register"}
           </Button>
+
         </form>
       </div>
 

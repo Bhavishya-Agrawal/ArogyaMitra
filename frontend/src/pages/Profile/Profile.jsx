@@ -1,43 +1,107 @@
 import React from "react";
 import { useAuth } from "../../context/AuthContext";
+import { User, Phone, IdCard } from "lucide-react";
 
 export default function Profile() {
   const { user } = useAuth();
 
   if (!user)
     return (
-      <div className="text-center text-gray-700 mt-10">
+      <div className="text-center text-gray-600 mt-10 text-lg">
         Please login to view your profile.
       </div>
     );
 
+  const info = user.user;
+
   return (
-    <div className="max-w-md mx-auto mt-10 px-4">
-      
+    <div className="max-w-md mx-auto mt-16 px-4">
+
+      {/* Header Title */}
+      <h2 className="text-3xl font-bold text-center text-gray-900 mb-6">
+        👤 Your <span className="text-blue-600">Profile</span>
+      </h2>
+
       {/* Card */}
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+      <div
+        className="
+          bg-white 
+          rounded-3xl 
+          shadow-lg 
+          border border-gray-100 
+          p-6 
+          space-y-6
+          transition 
+          hover:shadow-xl
+        "
+      >
+        
+        {/* Avatar */}
+        <div className="flex justify-center">
+          <div className="
+            w-20 h-20 
+            rounded-full 
+            bg-blue-600 
+            flex items-center justify-center 
+            text-white 
+            shadow-md
+          ">
+            <User className="w-10 h-10" />
+          </div>
+        </div>
 
-        {/* Title */}
-        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-          Your Profile
-        </h2>
+        {/* Info Section */}
+        <div className="space-y-4">
 
-        {/* User Details */}
-        <div className="text-gray-800 space-y-3 text-sm">
-
-          <div>
-            <span className="font-medium text-gray-700">Name:</span>{" "}
-            <span className="text-gray-900">{user.name || "-"}</span>
+          {/* Name */}
+          <div className="
+            flex items-center gap-3 
+            p-3 
+            bg-blue-50 
+            rounded-xl 
+            border border-blue-100
+          ">
+            <User className="w-5 h-5 text-blue-600" />
+            <div>
+              <p className="text-xs text-gray-500">Full Name</p>
+              <p className="text-gray-900 font-semibold">
+                {info.name || "-"}
+              </p>
+            </div>
           </div>
 
-          <div>
-            <span className="font-medium text-gray-700">Phone:</span>{" "}
-            <span className="text-gray-900">{user.phone || "-"}</span>
+          {/* Phone */}
+          <div className="
+            flex items-center gap-3 
+            p-3 
+            bg-teal-50 
+            rounded-xl 
+            border border-teal-100
+          ">
+            <Phone className="w-5 h-5 text-teal-600" />
+            <div>
+              <p className="text-xs text-gray-500">Phone Number</p>
+              <p className="text-gray-900 font-semibold">
+                {info.phone || "-"}
+              </p>
+            </div>
           </div>
 
-          <div>
-            <span className="font-medium text-gray-700">Aadhaar:</span>{" "}
-            <span className="text-gray-900">{user.aadhaar || "-"}</span>
+          {/* Aadhaar */}
+          <div className="
+            flex items-center gap-3 
+            p-3 
+            bg-purple-50 
+            rounded-xl
+            border border-purple-100
+          ">
+            <IdCard className="w-5 h-5 text-purple-600" />
+            <div>
+              <p className="text-xs text-gray-500">Aadhaar Number</p>
+              <p className="text-gray-900 font-semibold">
+                {info.aadhar || "-"}
+              </p>
+            </div>
           </div>
 
         </div>

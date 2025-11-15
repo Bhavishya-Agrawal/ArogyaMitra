@@ -1,8 +1,9 @@
 import mongoose from "mongoose";
 
-const fraudSchema = new mongoose.Schema({
-  billId: String,
-  frauds: Array
+const FraudSchema = new mongoose.Schema({
+  billId: { type: mongoose.Schema.Types.ObjectId, ref: "Bill" },
+  frauds: { type: Array, default: [] },
+  createdAt: { type: Date, default: Date.now }
 });
 
-export default mongoose.model("FraudReport", fraudSchema);
+export default mongoose.model("FraudReport", FraudSchema);

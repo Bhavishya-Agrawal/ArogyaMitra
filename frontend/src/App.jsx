@@ -12,6 +12,8 @@ import BillScanner from "./pages/BillScanner/BillScanner";
 import FraudReport from "./pages/FraudReport/FraudReport";
 import Profile from "./pages/Profile/Profile";
 import NotFound from "./pages/NotFound";
+import PMJAYEligibility from "./pages/PMJAYEligibility";
+import AIAssistant from "./pages/AiAssistant";
 
 export default function App() {
   return (
@@ -25,11 +27,13 @@ export default function App() {
           <Route path="/" element={<Onboarding />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path='/aiassistant' element={<AIAssistant/>}/>
           <Route path="/chat" element={<Chatbot />} />
           <Route path="/hospitals" element={<HospitalFinder />} />
           <Route path="/hospitals/:id" element={<HospitalDetails />} />
           <Route path="/scan" element={<BillScanner />} />
           <Route path="/fraud" element={<FraudReport />} />
+          <Route path='/checkeligibility' element={<PMJAYEligibility/>}/>
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
