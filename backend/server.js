@@ -1,5 +1,5 @@
 import express from "express";
-import dotenv from "dotenv";
+import "./utils/loadEnv.js"
 import cors from "cors";
 import connectDB from "./config/db.js";
 
@@ -16,7 +16,7 @@ import voiceChatbotRoutes from "./routes/voiceChatbot.route.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 
 // Load environment variables
-dotenv.config();
+
 
 // Initialize express app
 const app = express();

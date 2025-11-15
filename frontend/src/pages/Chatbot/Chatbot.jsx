@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import ChatBubble from "../../components/ChatBubble";
 import Button from "../../components/Button";
-import { sendChat } from "../../api/chatbotApi";
+import {sendChat}  from "../../api/chatbotApi.jsx";
 import axios from "../../api/axios";
 
 export default function Chatbot() {
@@ -12,12 +12,22 @@ export default function Chatbot() {
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const chatContainerRef = useRef(null);
   const currentAudioRef = useRef(null);
+
+  const languages = {
+    en: { name: 'English', greeting: 'Hello! Ask me about PM-JAY, hospitals, or bills.' },
+    hi: { name: 'हिंदी', greeting: 'नमस्ते! मुझसे PM-JAY, अस्पताल या बिल के बारे में पूछें।' }
+  };
+
+  // Update greeting when language changes
+  useEffect(() => {
+    setMessages([{ from: "bot", text: languages[selectedLanguage].greeting }]);
+  }, [selectedLanguage]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -36,22 +46,21 @@ export default function Chatbot() {
     setLoading(true);
 
     try {
-      const res = await sendChat(input);
+      const res = await axios.post('/chatbot/ask', {
+        message: input,
+        language: selectedLanguage
+      });
+      
       const botMsg = {
         from: "bot",
         text: res.data?.answer || "Sorry, no response."
       };
       setMessages((prev) => [...prev, botMsg]);
-
-      // Auto-speak response if voice is enabled
-      if (voiceEnabled && res.data?.answer) {
-        await speakText(res.data.answer);
-      }
     } catch (err) {
       console.error("Chat error:", err);
       setMessages((prev) => [
         ...prev,
-        { from: "bot", text: "Service unavailable. Please try again." }
+        { from: "bot", text: selectedLanguage === 'hi' ? "सेवा उपलब्ध नहीं है।" : "Service unavailable." }
       ]);
     } finally {
       setLoading(false);
@@ -76,8 +85,6 @@ export default function Chatbot() {
       mediaRecorderRef.current.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         await processAudio(audioBlob);
-        
-        // Stop all tracks
         stream.getTracks().forEach(track => track.stop());
       };
 
@@ -85,7 +92,9 @@ export default function Chatbot() {
       setIsRecording(true);
     } catch (error) {
       console.error("Microphone error:", error);
-      alert("Could not access microphone. Please grant permission.");
+      alert(selectedLanguage === 'hi' 
+        ? "माइक्रोफ़ोन एक्सेस नहीं मिल सका। कृपया अनुमति दें।"
+        : "Could not access microphone. Please grant permission.");
     }
   };
 
@@ -104,8 +113,8 @@ export default function Chatbot() {
     try {
       const formData = new FormData();
       formData.append('audio', audioBlob);
+      formData.append('language', selectedLanguage);
 
-      // Send to speech-to-text endpoint
       const response = await axios.post('/chatbot/speech-to-text', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -113,28 +122,28 @@ export default function Chatbot() {
       const transcribedText = response.data.text;
       
       if (transcribedText) {
-        // Add transcribed text as user message
         const userMsg = { from: "user", text: transcribedText };
         setMessages((prev) => [...prev, userMsg]);
 
-        // Get bot response
-        const chatRes = await sendChat(transcribedText);
+        const chatRes = await axios.post('/chatbot/ask', {
+          message: transcribedText,
+          language: selectedLanguage
+        });
+        
         const botMsg = {
           from: "bot",
           text: chatRes.data?.answer || "Sorry, no response."
         };
         setMessages((prev) => [...prev, botMsg]);
-
-        // Auto-speak response
-        if (voiceEnabled && chatRes.data?.answer) {
-          await speakText(chatRes.data.answer);
-        }
       }
     } catch (error) {
       console.error("Audio processing error:", error);
       setMessages((prev) => [
         ...prev,
-        { from: "bot", text: "Could not process audio. Please try again." }
+        { from: "bot", text: selectedLanguage === 'hi' 
+          ? "ऑडियो प्रोसेस नहीं कर सके। कृपया पुनः प्रयास करें।"
+          : "Could not process audio. Please try again." 
+        }
       ]);
     } finally {
       setLoading(false);
@@ -143,7 +152,6 @@ export default function Chatbot() {
 
   // Convert text to speech
   const speakText = async (text) => {
-    // Stop any currently playing audio
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
       currentAudioRef.current = null;
@@ -152,8 +160,9 @@ export default function Chatbot() {
     setIsSpeaking(true);
     
     try {
+      const voiceLanguage = selectedLanguage === 'hi' ? 'hi-IN' : 'en-IN';
       const response = await axios.post('/chatbot/text-to-speech', 
-        { text },
+        { text, language: voiceLanguage },
         { responseType: 'blob' }
       );
 
@@ -189,31 +198,27 @@ export default function Chatbot() {
     }
   };
 
-  // Handle Enter key
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
-  };
-
   return (
     <div className="max-w-3xl mx-auto mt-10 px-4">
-      {/* Title with Voice Toggle */}
+      
+      {/* Header with Language Selector */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold text-gray-900">
           Chat with Arogya Mitra
         </h2>
         
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={voiceEnabled}
-            onChange={(e) => setVoiceEnabled(e.target.checked)}
-            className="w-4 h-4 text-blue-600"
-          />
-          <span className="text-sm text-gray-700">Auto-speak responses</span>
-        </label>
+        {/* Language Selector */}
+        <select
+          value={selectedLanguage}
+          onChange={(e) => setSelectedLanguage(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none"
+        >
+          {Object.entries(languages).map(([code, lang]) => (
+            <option key={code} value={code}>
+              {lang.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Chat Container */}
@@ -236,21 +241,15 @@ export default function Chatbot() {
             {m.from === "bot" && (
               <button
                 onClick={() => speakText(m.text)}
-                className="text-gray-400 hover:text-blue-600 p-1 mt-1"
-                title="Speak this message"
+                className="text-gray-400 hover:text-blue-600 p-1 text-lg flex-shrink-0"
+                title={selectedLanguage === 'hi' ? "सुनें" : "Listen"}
+                disabled={isSpeaking}
               >
                 🔊
               </button>
             )}
           </div>
         ))}
-        {loading && (
-          <div className="flex items-center gap-2 text-gray-500">
-            <div className="animate-pulse">●</div>
-            <div className="animate-pulse delay-100">●</div>
-            <div className="animate-pulse delay-200">●</div>
-          </div>
-        )}
       </div>
 
       {/* Input Area */}
@@ -258,9 +257,8 @@ export default function Chatbot() {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Type your question…"
-          disabled={loading || isRecording}
+          onKeyPress={(e) => e.key === 'Enter' && send()}
+          placeholder={selectedLanguage === 'hi' ? "अपना सवाल लिखें…" : "Type your question…"}
           className="
             flex-1 
             p-3 
@@ -272,60 +270,47 @@ export default function Chatbot() {
             focus:ring-2 
             focus:ring-blue-600 
             focus:outline-none
-            disabled:bg-gray-100
-            disabled:cursor-not-allowed
           "
         />
 
-        {/* Voice Input Button */}
+        {/* Microphone Button */}
         <button
           onClick={isRecording ? stopRecording : startRecording}
           disabled={loading}
           className={`
-            px-4 py-3 rounded-xl font-medium shadow-sm
-            transition-all duration-200
+            px-4 py-3 rounded-xl font-medium shadow-sm transition-all
             ${isRecording 
-              ? 'bg-red-600 text-white hover:bg-red-700 animate-pulse' 
-              : 'bg-gray-600 text-white hover:bg-gray-700'
+              ? 'bg-red-600 text-white hover:bg-red-700' 
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
             }
             disabled:opacity-50 disabled:cursor-not-allowed
           `}
-          title={isRecording ? "Stop recording" : "Start voice input"}
+          title={isRecording 
+            ? (selectedLanguage === 'hi' ? "रोकें" : "Stop") 
+            : (selectedLanguage === 'hi' ? "बोलें" : "Speak")
+          }
         >
-          {isRecording ? "⏹️ Stop" : "🎤"}
+          {isRecording ? "⏹️" : "🎤"}
         </button>
 
-        {/* Stop Speaking Button */}
-        {isSpeaking && (
-          <button
-            onClick={stopSpeaking}
-            className="
-              px-4 py-3 rounded-xl font-medium shadow-sm
-              bg-orange-600 text-white hover:bg-orange-700
-              transition-all duration-200
-            "
-            title="Stop speaking"
-          >
-            🔇 Stop
-          </button>
-        )}
-
-        {/* Send Button */}
-        <Button onClick={send} disabled={loading || isRecording || !input.trim()}>
-          {loading ? "…" : "Send"}
+        <Button onClick={send}>
+          {loading ? "…" : (selectedLanguage === 'hi' ? "भेजें" : "Send")}
         </Button>
       </div>
 
-      {/* Status Indicator */}
+      {/* Status */}
       {isRecording && (
-        <div className="mt-2 text-center text-sm text-red-600 font-medium">
-          🎤 Recording... Speak now
-        </div>
+        <p className="mt-2 text-sm text-red-600 text-center">
+          🎤 {selectedLanguage === 'hi' ? "रिकॉर्ड हो रहा है..." : "Recording..."}
+        </p>
       )}
       {isSpeaking && (
-        <div className="mt-2 text-center text-sm text-blue-600 font-medium">
-          🔊 Speaking...
-        </div>
+        <button 
+          onClick={stopSpeaking}
+          className="mt-2 text-sm text-blue-600 text-center w-full hover:text-blue-800"
+        >
+          🔇 {selectedLanguage === 'hi' ? "बोलना बंद करें" : "Stop Speaking"}
+        </button>
       )}
     </div>
   );
