@@ -2,18 +2,37 @@ import React, { useEffect, useState } from "react";
 import HospitalCard from "../../components/HospitalCard";
 import { getHospitals } from "../../api/hospitalApi";
 import Loader from "../../components/Loader";
+import { SlidersHorizontal } from "lucide-react";
 
 export default function HospitalFinder() {
   const [hospitals, setHospitals] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // filters
+  // Filters
   const [search, setSearch] = useState("");
   const [location, setLocation] = useState("");
-  const [minRating, setMinRating] = useState("");  // ⭐ NEW
+  const [ratingRange, setRatingRange] = useState("");
+  const [specialityFilter, setSpecialityFilter] = useState("");
 
-  // pagination
+  const specialityOptions = [
+    "Eye Care Hospital",
+    "Dental",
+    "Multi-speciality",
+    "Cardiac",
+    "Neuro",
+    "Orthopedic",
+    "General"
+  ];
+
+  const ratingOptions = [
+    { value: "1-2", label: "1 ★ – 2 ★" },
+    { value: "2-3", label: "2 ★ – 3 ★" },
+    { value: "3-4", label: "3 ★ – 4 ★" },
+    { value: "4-5", label: "4 ★ – 5 ★" }
+  ];
+
+  // Pagination
   const [page, setPage] = useState(1);
   const perPage = 6;
 
@@ -24,7 +43,7 @@ export default function HospitalFinder() {
         const list = res.data || res;
         setHospitals(list);
         setFiltered(list);
-      } catch (e) {
+      } catch {
         setHospitals([]);
         setFiltered([]);
       } finally {
@@ -33,84 +52,171 @@ export default function HospitalFinder() {
     })();
   }, []);
 
-  // FILTERS: search + location + rating
+  // Apply Filters
   useEffect(() => {
     let data = hospitals;
 
-    // search by hospitalName OR speciality
-    if (search.trim() !== "") {
+    if (search.trim()) {
+      const s = search.toLowerCase();
       data = data.filter(
         (h) =>
-          h.hospitalName.toLowerCase().includes(search.toLowerCase()) ||
-          h.speciality.toLowerCase().includes(search.toLowerCase())
+          h.hospitalName.toLowerCase().includes(s) ||
+          h.speciality.toLowerCase().includes(s)
       );
     }
 
-    // filter by district or state
-    if (location.trim() !== "") {
+    if (location.trim()) {
+      const l = location.toLowerCase();
       data = data.filter(
         (h) =>
-          h.district.toLowerCase().includes(location.toLowerCase()) ||
-          h.state.toLowerCase().includes(location.toLowerCase())
+          h.district.toLowerCase().includes(l) ||
+          h.state.toLowerCase().includes(l)
       );
     }
 
-    // ⭐ filter by min rating (4.5, 4.0, 3.5 etc.)
-    if (minRating !== "") {
-      data = data.filter((h) => Number(h.rating) >= Number(minRating));
+    if (ratingRange) {
+      const [min, max] = ratingRange.split("-").map(Number);
+      data = data.filter(
+        (h) => Number(h.rating) >= min && Number(h.rating) <= max
+      );
+    }
+
+    if (specialityFilter) {
+      data = data.filter(
+        (h) =>
+          h.speciality.toLowerCase() === specialityFilter.toLowerCase()
+      );
     }
 
     setFiltered(data);
     setPage(1);
-  }, [search, location, minRating, hospitals]);
+  }, [search, location, ratingRange, specialityFilter, hospitals]);
 
-  // Pagination logic
   const start = (page - 1) * perPage;
-  const end = start + perPage;
-  const paginated = filtered.slice(start, end);
+  const paginated = filtered.slice(start, start + perPage);
   const totalPages = Math.ceil(filtered.length / perPage);
 
+  const clearFilters = () => {
+    setSearch("");
+    setLocation("");
+    setRatingRange("");
+    setSpecialityFilter("");
+  };
+
   return (
-    <div className="max-w-4xl mx-auto mt-10 px-4">
+    <div className="max-w-4xl mx-auto mt-4 px-4">
+
+      {/* ===================================================== */}
+      {/* HERO IMAGE SECTION */}
+      {/* ===================================================== */}
+      <div className="relative rounded-3xl overflow-hidden shadow-lg mb-10">
+        <img
+          src="https://images.pexels.com/photos/263402/pexels-photo-263402.jpeg?auto=compress"
+          className="w-full h-64 object-cover brightness-75"
+        />
+
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center px-6">
+          <h2 className="text-4xl font-extrabold drop-shadow-lg">
+            Search Trusted Hospitals
+          </h2>
+          <p className="text-lg mt-2 max-w-xl opacity-90">
+            Find Ayushman Bharat & PM-JAY empaneled hospitals across India.
+          </p>
+        </div>
+      </div>
 
       {/* Title */}
-      <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-        Nearby Hospitals
-      </h2>
+      <div className="flex items-center gap-3 mb-6">
+        <SlidersHorizontal className="text-blue-600" size={22} />
+        <h2 className="text-3xl font-semibold text-gray-900">
+          Find Nearby Hospitals
+        </h2>
+      </div>
 
-      {/* Search + Filters */}
-      <div className="flex flex-col md:flex-row mb-6 gap-4">
+      {/* FILTER BOX */}
+      <div
+        className="
+          bg-white/70 backdrop-blur-xl 
+          shadow-[0_10px_25px_rgba(0,0,0,0.07)]
+          border border-gray-200
+          rounded-3xl p-6 md:p-7 
+          space-y-5 
+          transition-all
+        "
+      >
+        {/* Search + Location */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input
+            type="text"
+            placeholder="Search hospital or speciality…"
+            className="
+              p-3 rounded-xl border border-gray-300 
+              shadow-sm focus:ring-2 focus:ring-blue-500
+              transition bg-white/80
+            "
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
 
-        {/* Search by name */}
-        <input
-          type="text"
-          placeholder="Search hospital or speciality..."
-          className="border px-3 py-2 rounded w-full"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+          <input
+            type="text"
+            placeholder="Search by District / State…"
+            className="
+              p-3 rounded-xl border border-gray-300 
+              shadow-sm focus:ring-2 focus:ring-blue-500
+              bg-white/80
+            "
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+          />
+        </div>
 
-        {/* Location filter */}
-        <input
-          type="text"
-          placeholder="Enter location (District/State)"
-          className="border px-3 py-2 rounded w-full"
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-        />
+        {/* Rating + Speciality */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <select
+            className="
+              p-3 rounded-xl border 
+              shadow-sm bg-white/80
+              focus:ring-2 focus:ring-blue-500 
+            "
+            value={ratingRange}
+            onChange={(e) => setRatingRange(e.target.value)}
+          >
+            <option value="">Filter by Rating</option>
+            {ratingOptions.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </select>
 
-        {/* ⭐ Rating filter */}
-        <select
-          className="border px-3 py-2 rounded w-full md:w-48"
-          value={minRating}
-          onChange={(e) => setMinRating(e.target.value)}
+          <select
+            className="
+              p-3 rounded-xl border shadow-sm 
+              bg-white/80 focus:ring-2 focus:ring-blue-500
+            "
+            value={specialityFilter}
+            onChange={(e) => setSpecialityFilter(e.target.value)}
+          >
+            <option value="">Filter by Speciality</option>
+            {specialityOptions.map((sp) => (
+              <option key={sp} value={sp}>
+                {sp}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Clear Filters */}
+        <button
+          onClick={clearFilters}
+          className="
+            w-full md:w-48 p-3 bg-gray-800 text-white 
+            rounded-xl shadow-md hover:bg-black transition
+          "
         >
-          <option value="">Filter by Rating</option>
-          <option value="4.5">4.5 ★ & Up</option>
-          <option value="4.0">4.0 ★ & Up</option>
-          <option value="3.5">3.5 ★ & Up</option>
-          <option value="3.0">3.0 ★ & Up</option>
-        </select>
+          Clear Filters
+        </button>
       </div>
 
       {/* Loader */}
@@ -120,14 +226,15 @@ export default function HospitalFinder() {
         <>
           {paginated.length ? (
             <>
-              <div className="grid grid-cols-1 gap-5">
+              {/* Hospital Cards */}
+              <div className="grid grid-cols-1 gap-5 mt-8">
                 {paginated.map((h) => (
                   <HospitalCard key={h.slNo} hospital={h} />
                 ))}
               </div>
 
               {/* Pagination */}
-              <div className="flex justify-between items-center mt-8">
+              <div className="flex justify-between items-center mt-8 bg-white p-3 rounded-xl shadow">
                 <button
                   disabled={page === 1}
                   onClick={() => setPage(page - 1)}
@@ -150,8 +257,8 @@ export default function HospitalFinder() {
               </div>
             </>
           ) : (
-            <div className="text-gray-700 text-center mt-10">
-              No hospitals found.
+            <div className="text-gray-700 text-center mt-10 text-lg">
+              No hospitals match your filters 😕
             </div>
           )}
         </>
