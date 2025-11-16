@@ -7,7 +7,7 @@ import { Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 
 export default function Chatbot() {
   const [messages, setMessages] = useState([
-    { from: "bot", text: "Hello, I am Arogya Mitra! Ask me about PM-JAY, hospitals, or bills." }
+    { from: "bot", text: "Hello! Ask me about PM-JAY, hospitals, or bills." }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,14 +27,14 @@ export default function Chatbot() {
     en: { 
       name: 'English', 
       displayName: 'English',
-      greeting: 'Hello, I am Arogya Mitra! Ask me about PM-JAY, hospitals, or bills.',
+      greeting: 'Hello! Ask me about PM-JAY, hospitals, or bills.',
       speechCode: 'en-IN',
       voiceCode: 'en-IN'
     },
     hi: { 
       name: 'हिंदी',
       displayName: 'हिंदी', 
-      greeting: 'नमस्ते, मैं आरोग्य मित्र हूँ! मुझसे PM-JAY, अस्पताल या बिल के बारे में पूछें।',
+      greeting: 'नमस्ते! मुझसे PM-JAY, अस्पताल या बिल के बारे में पूछें।',
       speechCode: 'hi-IN',
       voiceCode: 'hi-IN'
     }
@@ -51,7 +51,8 @@ export default function Chatbot() {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
-    useEffect(() => {
+
+   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
@@ -87,6 +88,11 @@ export default function Chatbot() {
         text: res.data?.answer || "Sorry, no response."
       };
       setMessages((prev) => [...prev, botMsg]);
+
+      // AUTO-SPEAK bot response if enabled
+      if (autoSpeak && botMsg.text !== "Sorry, no response.") {
+        setTimeout(() => speakText(botMsg.text), 300); // Small delay for better UX
+      }
     } catch (err) {
       console.error("Chat error:", err);
       setMessages((prev) => [
@@ -166,6 +172,11 @@ export default function Chatbot() {
           text: chatRes.data?.answer || "Sorry, no response."
         };
         setMessages((prev) => [...prev, botMsg]);
+
+        // AUTO-SPEAK bot response if enabled
+        if (autoSpeak && botMsg.text !== "Sorry, no response.") {
+          setTimeout(() => speakText(botMsg.text), 300);
+        }
       }
     } catch (error) {
       console.error("Audio processing error:", error);
@@ -243,24 +254,39 @@ export default function Chatbot() {
   return (
     <div className="max-w-3xl mx-auto mt-10 px-4">
       
-      {/* Header with Language Selector */}
+      {/* Header with Language Selector and Auto-Speak Toggle */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-semibold text-gray-900">
           Chat with Arogya Mitra
         </h2>
         
-        {/* Language Selector */}
-        <select
-          value={selectedLanguage}
-          onChange={(e) => setSelectedLanguage(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
-        >
-          {Object.entries(languages).map(([code, lang]) => (
-            <option key={code} value={code}>
-              {lang.displayName}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-4">
+          {/* Auto-Speak Toggle */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoSpeak}
+              onChange={(e) => setAutoSpeak(e.target.checked)}
+              className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-700">
+              {selectedLanguage === 'hi' ? 'ऑटो-स्पीक' : 'Auto-speak'}
+            </span>
+          </label>
+
+          {/* Language Selector */}
+          <select
+            value={selectedLanguage}
+            onChange={(e) => setSelectedLanguage(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+          >
+            {Object.entries(languages).map(([code, lang]) => (
+              <option key={code} value={code}>
+                {lang.displayName}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Chat Container */}

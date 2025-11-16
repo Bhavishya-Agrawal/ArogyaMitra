@@ -14,10 +14,13 @@ import Profile from "./pages/Profile/Profile";
 import NotFound from "./pages/NotFound";
 import PMJAYEligibility from "./pages/PMJAYEligibility";
 import AIAssistant from "./pages/AiAssistant";
+import Footer from "./components/Footer";
+import AboutUs from "./pages/AboutUs";
+import Contact from "./pages/Contact";
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <div className="min-h-screen bg-gray-100 text-gray-900">
       {/* Navbar */}
       <Navbar />
 
@@ -35,9 +38,12 @@ export default function App() {
           <Route path="/fraud" element={<FraudReport />} />
           <Route path='/checkeligibility' element={<PMJAYEligibility/>}/>
           <Route path="/profile" element={<Profile />} />
+          <Route path="/contact" element={<Contact/>} />
+          <Route path='/aboutus' element={<AboutUs/>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
+      <Footer/>
     </div>
   );
 }
