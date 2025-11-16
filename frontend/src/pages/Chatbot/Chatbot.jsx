@@ -23,6 +23,29 @@ export default function Chatbot() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const chatContainerRef = useRef(null);
+  const currentAudioRef = useRef(null);
+
+  const languages = {
+    en: { name: 'English', greeting: 'Hello! Ask me about PM-JAY, hospitals, or bills.' },
+    hi: { name: 'हिंदी', greeting: 'नमस्ते! मुझसे PM-JAY, अस्पताल या बिल के बारे में पूछें।' }
+  };
+
+  // Update greeting when language changes
+  useEffect(() => {
+    setMessages([{ from: "bot", text: languages[selectedLanguage].greeting }]);
+  }, [selectedLanguage]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // Send text message
   const send = async () => {
     if (!input.trim() || loading) return;
 
@@ -46,6 +69,7 @@ export default function Chatbot() {
       if (res.data?.conversationId)
         setConversationId(res.data.conversationId);
     } catch (err) {
+      console.error("Chat error:", err);
       setMessages((prev) => [
         ...prev,
         {
@@ -70,6 +94,7 @@ export default function Chatbot() {
 
       {/* --- HEADER --- */}
       <div
+        ref={chatContainerRef}
         className="
           flex items-center gap-4 p-5 
           bg-white/60 backdrop-blur-xl 
@@ -161,6 +186,21 @@ export default function Chatbot() {
           <FaPaperPlane />
         </button>
       </div>
+
+      {/* Status */}
+      {isRecording && (
+        <p className="mt-2 text-sm text-red-600 text-center">
+          🎤 {selectedLanguage === 'hi' ? "रिकॉर्ड हो रहा है..." : "Recording..."}
+        </p>
+      )}
+      {isSpeaking && (
+        <button 
+          onClick={stopSpeaking}
+          className="mt-2 text-sm text-blue-600 text-center w-full hover:text-blue-800"
+        >
+          🔇 {selectedLanguage === 'hi' ? "बोलना बंद करें" : "Stop Speaking"}
+        </button>
+      )}
     </div>
   );
 }
