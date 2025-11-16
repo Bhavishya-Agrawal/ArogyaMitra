@@ -1,89 +1,165 @@
-import React, { useState } from "react";
-import ChatBubble from "../../components/ChatBubble";
-import Button from "../../components/Button";
-import { sendChat } from "../../api/chatbotApi";
+import React, { useState, useEffect, useRef } from "react";
+import ChatBubble from "../../components/ChatBubble.jsx";
+import { sendChat } from "../../api/chatbotApi.jsx";
+import { useLanguage } from "../../context/LanguageContext.jsx";
+import { FaPaperPlane } from "react-icons/fa";
 
 export default function Chatbot() {
+  const { lang } = useLanguage();
   const [messages, setMessages] = useState([
-    { from: "bot", text: "Hello! Ask me about PM-JAY, hospitals, or bills." }
+    {
+      from: "bot",
+      text: "👋 Welcome to Arogya Mitra! How can I help you today?",
+    },
   ]);
+
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [conversationId, setConversationId] = useState(null);
+  const chatEndRef = useRef(null);
+
+  // Auto scroll
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const send = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
 
     const userMsg = { from: "user", text: input };
     setMessages((prev) => [...prev, userMsg]);
+
+    const userInput = input;
     setInput("");
     setLoading(true);
 
     try {
-      const res = await sendChat(input);
+      const res = await sendChat(userInput, lang, conversationId);
+
       const botMsg = {
         from: "bot",
-        text: res.data?.answer || "Sorry, no response."
+        text: res.data?.reply || "⚠️ I couldn't understand that.",
       };
+
       setMessages((prev) => [...prev, botMsg]);
+
+      if (res.data?.conversationId)
+        setConversationId(res.data.conversationId);
     } catch (err) {
       setMessages((prev) => [
         ...prev,
-        { from: "bot", text: "Service unavailable." }
+        {
+          from: "bot",
+          text: "⚠️ Unable to reach server. Try again.",
+        },
       ]);
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="max-w-3xl mx-auto mt-10 px-4">
-      
-      {/* Title */}
-      <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-        Chat with Arogya Mitra
-      </h2>
+  const handleKey = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  };
 
-      {/* Chat Container */}
+  return (
+    <div className="max-w-4xl mx-auto mt-24 px-4">
+
+      {/* --- HEADER --- */}
       <div
         className="
-          bg-white 
-          border border-gray-200 
-          rounded-2xl 
-          shadow-sm 
-          h-[65vh] 
-          overflow-y-auto 
-          p-4 
-          space-y-2
+          flex items-center gap-4 p-5 
+          bg-white/60 backdrop-blur-xl 
+          rounded-3xl shadow-[0_8px_25px_rgba(0,0,0,0.08)]
+          border border-white/40
+        "
+      >
+        <img
+          src="https://cdn-icons-png.flaticon.com/512/3774/3774299.png"
+          className="w-14 h-14 rounded-3xl shadow-[4px_8px_20px_rgba(0,0,0,0.20)]"
+        />
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 drop-shadow-md">
+            Arogya Mitra Assistant
+          </h2>
+          <p className="text-sm text-gray-600">AI Health Companion</p>
+        </div>
+      </div>
+
+      {/* --- CHAT WINDOW (3D GLASS BOX) --- */}
+      <div
+        className="
+          mt-6 p-5 h-[65vh] rounded-3xl overflow-y-auto
+          bg-white/30 backdrop-blur-2xl 
+          border border-white/40 
+          shadow-[0_15px_35px_rgba(0,0,0,0.12)]
+          space-y-3 relative
         "
       >
         {messages.map((m, i) => (
-          <ChatBubble key={i} from={m.from} text={m.text} />
+          <div
+            key={i}
+            className="animate-fadeIn"
+            style={{
+              animationDuration: "0.4s",
+              animationTimingFunction: "ease-out",
+            }}
+          >
+            <ChatBubble from={m.from} text={m.text} />
+          </div>
         ))}
+
+        {loading && (
+          <div
+            className="
+              bg-white/80 px-4 py-2 rounded-2xl w-fit shadow-lg 
+              flex items-center gap-2 animate-pulse border border-gray-200
+            "
+          >
+            <div className="w-3 h-3 rounded-full bg-gray-400 animate-bounce"></div>
+            <div className="w-3 h-3 rounded-full bg-gray-400 animate-bounce delay-150"></div>
+            <div className="w-3 h-3 rounded-full bg-gray-400 animate-bounce delay-300"></div>
+          </div>
+        )}
+
+        <div ref={chatEndRef}></div>
       </div>
 
-      {/* Input Area */}
-      <div className="mt-4 flex gap-3">
+      {/* --- INPUT AREA (3D Floating Bar) --- */}
+      <div
+        className="
+          mt-5 w-full flex items-center gap-3 
+          bg-white/70 backdrop-blur-xl 
+          p-3 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.1)]
+          border border-white/50
+        "
+      >
         <input
+          className="
+            flex-1 px-4 py-3 rounded-xl bg-white/60
+            shadow-inner text-gray-800 
+            focus:ring-2 focus:ring-blue-500 outline-none
+          "
+          placeholder="Ask something…"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your question…"
-          className="
-            flex-1 
-            p-3 
-            border 
-            border-gray-300 
-            rounded-xl 
-            shadow-sm 
-            text-gray-900 
-            focus:ring-2 
-            focus:ring-blue-600 
-            focus:outline-none
-          "
+          onKeyDown={handleKey}
+          disabled={loading}
         />
 
-        <Button onClick={send}>
-          {loading ? "…" : "Send"}
-        </Button>
+        <button
+          onClick={send}
+          className="
+            p-4 rounded-xl bg-blue-600 text-white 
+            shadow-[0_5px_15px_rgba(0,0,255,0.35)]
+            hover:bg-blue-700 active:scale-95 transition-all
+          "
+        >
+          <FaPaperPlane />
+        </button>
       </div>
     </div>
   );
