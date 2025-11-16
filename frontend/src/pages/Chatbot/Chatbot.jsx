@@ -7,7 +7,7 @@ import { Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 
 export default function Chatbot() {
   const [messages, setMessages] = useState([
-    { from: "bot", text: "Hello! Ask me about PM-JAY, hospitals, or bills." }
+    { from: "bot", text: "Hello, I am Arogya Mitra! Ask me about PM-JAY, hospitals, or bills." }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,14 +27,14 @@ export default function Chatbot() {
     en: { 
       name: 'English', 
       displayName: 'English',
-      greeting: 'Hello! Ask me about PM-JAY, hospitals, or bills.',
+      greeting: 'Hello, I am Arogya Mitra! Ask me about PM-JAY, hospitals, or bills.',
       speechCode: 'en-IN',
       voiceCode: 'en-IN'
     },
     hi: { 
       name: 'हिंदी',
       displayName: 'हिंदी', 
-      greeting: 'नमस्ते! मुझसे PM-JAY, अस्पताल या बिल के बारे में पूछें।',
+      greeting: 'नमस्कार, मैं आरोग्य मित्र हूँ! मुझसे PM-JAY, अस्पताल या बिल के बारे में पूछें।',
       speechCode: 'hi-IN',
       voiceCode: 'hi-IN'
     }
