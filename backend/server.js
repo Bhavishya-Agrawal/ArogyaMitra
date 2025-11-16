@@ -1,5 +1,4 @@
 
-
 // Routes
 import express from "express";
 import "./utils/loadEnv.js"
@@ -11,8 +10,8 @@ import authRoutes from "./routes/authRoutes.js";
 import hospitalRoutes from "./routes/hospitalRoutes.js";
 import billRoutes from "./routes/billRoutes.js";
 import fraudRoutes from "./routes/fraudRoutes.js";
-import chatbotRoutes from "./routes/chatbotRoutes.js";
-import { handleBotFrameworkMessage } from "./controllers/botFrameworkController.js";
+// import chatbotRoutes from "./routes/chatbotRoutes.js";
+// import { handleBotFrameworkMessage } from "./controllers/botFrameworkController.js";
 
 
 // New voice chatbot routes
@@ -51,7 +50,7 @@ app.use("/api/hospitals", hospitalRoutes);
 app.use("/api/bills", billRoutes);
 app.use("/api/fraud", fraudRoutes);
 
-app.use("/api/chat", chatbotRoutes);
+// app.use("/api/chat", chatbotRoutes);
 
 // API Routes - New Voice Chatbot
 app.use("/api/chatbot", voiceChatbotRoutes);

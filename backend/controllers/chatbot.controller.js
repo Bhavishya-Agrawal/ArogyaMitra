@@ -2,8 +2,6 @@ import speech from '@google-cloud/speech';
 import textToSpeech from '@google-cloud/text-to-speech';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const GEMINI_TTS_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-tts:generateContent';
-
 // Initialize Google Cloud clients
 const speechClient = new speech.SpeechClient({
   keyFilename: process.env.GOOGLE_CREDENTIALS_PATH || './key.json'
@@ -40,8 +38,7 @@ You help users with:
 - Claim processes and documentation
 - Benefits and coverage details
 
-Be concise, helpful, and empathetic. If you don't know something specific, guide them to visit www.pmjay.gov.in or call 14555.
-You are developed by Arogya Mitra`,
+Be concise, helpful, and empathetic. If you don't know something specific, guide them to visit www.pmjay.gov.in or call 14555.`,
 
   hi: `आप आरोग्य मित्र हैं, PM-JAY (प्रधानमंत्री जन आरोग्य योजना), भारत की राष्ट्रीय स्वास्थ्य बीमा योजना के लिए एक सहायक हैं।
 
@@ -60,8 +57,7 @@ PM-JAY के बारे में मुख्य जानकारी:
 - दावा प्रक्रिया और दस्तावेज़ीकरण
 - लाभ और कवरेज विवरण
 
-संक्षिप्त, सहायक और सहानुभूतिपूर्ण रहें। यदि आपको कुछ विशिष्ट नहीं पता है, तो उन्हें www.pmjay.gov.in पर जाने या 14555 पर कॉल करने का मार्गदर्शन करें।
-आप आरोग्य मित्र द्वारा विकसित हैं`
+संक्षिप्त, सहायक और सहानुभूतिपूर्ण रहें। यदि आपको कुछ विशिष्ट नहीं पता है, तो उन्हें www.pmjay.gov.in पर जाने या 14555 पर कॉल करने का मार्गदर्शन करें।`
 };
 
 // Detect language from message
@@ -71,23 +67,54 @@ const detectLanguage = (message) => {
   return hindiRegex.test(message) ? 'hi' : 'en';
 };
 
+const checkKeywordReply = (message) => {
+  const msg = message.toLowerCase();
+
+  for (const item of KEYWORD_REPLIES) {
+    for (const kw of item.keywords) {
+      if (msg.includes(kw.toLowerCase())) {
+        return item.reply;
+      }
+    }
+  }
+
+  return null; // no match
+};
+
+
+const KEYWORD_REPLIES = [
+  {
+    keywords: ["fraud", "bill fraud", "fraud check", "fake bill"],
+    reply: "🔍 You can check hospital bill fraud here: <a href=\"http://127.0.0.1:5173/scan\" style=\"font-color: blue\">Bill Scanner</a>"
+  },
+  {
+    keywords: ["hospital list", "nearby hospital", "empaneled hospitals"],
+    reply: "🏥 You can search empaneled hospitals here: https://your-site.com/hospitals"
+  },
+  {
+    keywords: ["eligibility", "am i eligible", "check eligibility"],
+    reply: "🧾 Check your PM-JAY eligibility: https://pmjay.gov.in"
+  }
+];
+
+
 // Fallback responses for common queries
 const getFallbackResponse = (message) => {
   const msg = message.toLowerCase();
   
-  if (msg.includes('eligibe')) {
+  if (msg.includes('eligib')) {
     return "PM-JAY covers the bottom 40% of India's population based on SECC 2011 data. You can check your eligibility by visiting pmjay.gov.in or calling 14555.";
   } else if (msg.includes('hospital')) {
     return "You can find empaneled hospitals near you at pmjay.gov.in. There are over 27,000+ empaneled hospitals across India providing cashless treatment.";
-  } else if (msg.includes('bill') || msg.includes('cost')) {
+  } else if (msg.includes('fraud')){
+    return "You can check bill fraud on our arogya mitra site"
+  }else if (msg.includes('bill') || msg.includes('cost')) {
     return "PM-JAY provides cashless treatment up to ₹5 lakhs per family per year. All costs are covered directly by the scheme at empaneled hospitals. No bills to pay!";
   } else if (msg.includes('card') || msg.includes('document')) {
     return "You need your Ayushman Card for treatment. If you don't have it, you can get it made at Common Service Centers (CSC) or empaneled hospitals with your Aadhaar card.";
   } else if (msg.includes('claim')) {
     return "Claims are processed cashless at empaneled hospitals. You don't need to file claims - the hospital does it directly. Just show your Ayushman Card.";
-  } else if(msg.includes('तुम्हें किसने बनाया है?')){
-    return "मुझे आरोग्य मित्र ने बनाया है बड़ी मेहनत और पूरी समर्पण के साथ मैं सिर्फ आपकी मदद करने के लिए बानी हूं आपको क्या मेरी मदद चाहिए"
-  }else {
+  } else {
     return "I'm here to help with PM-JAY queries! You can ask about eligibility, finding hospitals, benefits, bills, or call 14555 for immediate assistance.";
   }
 };
@@ -106,13 +133,27 @@ export const askChatbot = async (req, res) => {
       });
     }
 
-    // Detect or use provided language
+    // Detect language
     const detectedLang = language || detectLanguage(message);
+
+    // 🔥 Hardcoded replies BEFORE calling Gemini
+    const keywordReply = checkKeywordReply(message);
+    if (keywordReply) {
+      return res.json({
+        success: true,
+        answer: keywordReply,
+        sessionId,
+        detectedLanguage: detectedLang,
+        hardcoded: true
+      });
+    }
+
     const systemContext = SYSTEM_CONTEXTS[detectedLang] || SYSTEM_CONTEXTS.en;
 
     // Get or create chat session with context
     const sessionKey = `${sessionId}_${detectedLang}`;
     let chat = chatHistories.get(sessionKey);
+    
     if (!chat) {
       chat = model.startChat({
         history: [
@@ -125,7 +166,7 @@ export const askChatbot = async (req, res) => {
             parts: [{ 
               text: detectedLang === 'hi' 
                 ? "मैं समझता हूं। मैं आरोग्य मित्र हूं, PM-JAY प्रश्नों में मदद करने के लिए यहां हूं। मैं आपकी कैसे सहायता कर सकता हूं?"
-                : "I understand. I'm Arogya Mitra, here to help with PM-JAY queries. How can I assist you today?" 
+                : "I understand. I'm Arogya Mitra, here to help with PM-JAY queries. How can I assist you today?"
             }],
           }
         ],
@@ -136,10 +177,11 @@ export const askChatbot = async (req, res) => {
           topK: 40,
         },
       });
+
       chatHistories.set(sessionKey, chat);
     }
 
-    // Send message and get response
+    // Send message to Gemini
     const result = await chat.sendMessage(message);
     const response = await result.response;
     const answer = response.text();
@@ -150,10 +192,8 @@ export const askChatbot = async (req, res) => {
       sessionId,
       detectedLanguage: detectedLang
     });
+
   } catch (error) {
-    console.error('Chatbot error:', error);
-    
-    // Fallback response if Gemini fails
     const fallbackResponse = getFallbackResponse(req.body.message);
     
     res.json({ 
@@ -163,6 +203,7 @@ export const askChatbot = async (req, res) => {
     });
   }
 };
+
 
 // @desc    Convert speech to text
 // @route   POST /api/chatbot/speech-to-text
@@ -183,7 +224,7 @@ export const convertSpeechToText = async (req, res) => {
     const langCodes = {
       'en': 'en-US',
       'hi': 'hi-IN',
-      'auto': 'en-US' 
+      'auto': 'en-US' // default, will also try Hindi
     };
 
     const primaryLang = langCodes[language] || 'en-US';
@@ -230,12 +271,12 @@ export const convertSpeechToText = async (req, res) => {
   }
 };
 
-// @desc    Convert text to speech using Gemini TTS
+// @desc    Convert text to speech
 // @route   POST /api/chatbot/text-to-speech
 // @access  Public
 export const convertTextToSpeech = async (req, res) => {
   try {
-    const { text, language = 'en-IN', voice = 'Charon' } = req.body;
+    const { text, language = 'en-IN' } = req.body;
 
     if (!text) {
       return res.status(400).json({ 
@@ -244,82 +285,21 @@ export const convertTextToSpeech = async (req, res) => {
       });
     }
 
-    console.log(`TTS Request - Text: "${text.substring(0, 50)}...", Voice: ${voice}, Language: ${language}`);
-
-    // Try Gemini 2.0 Flash with Audio first (free, natural voice)
-    try {
-      console.log('Attempting Gemini TTS...');
-      
-      const geminiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${process.env.GOOGLE_GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: text
-              }]
-            }],
-            generationConfig: {
-              temperature: 1,
-              topP: 0.95,
-              topK: 40,
-              maxOutputTokens: 8192,
-              responseMimeType: "audio/mp3",
-              responseModalities: ["AUDIO"]
-            }
-          })
-        }
-      );
-
-      if (geminiResponse.ok) {
-        const geminiData = await geminiResponse.json();
-        console.log('Gemini response structure:', JSON.stringify(geminiData, null, 2));
-        
-        // Try to extract audio from various possible locations
-        const audioData = 
-          geminiData.candidates?.[0]?.content?.parts?.[0]?.inlineData ||
-          geminiData.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData ||
-          geminiData.audioContent;
-        
-        if (audioData && audioData.data) {
-          console.log('✅ Gemini TTS succeeded! Audio size:', audioData.data.length);
-          const audioBuffer = Buffer.from(audioData.data, 'base64');
-          res.set('Content-Type', 'audio/mpeg');
-          res.send(audioBuffer);
-          return;
-        } else {
-          console.warn('Gemini response missing audio data:', geminiData);
-        }
-      } else {
-        const errorText = await geminiResponse.text();
-        console.error('Gemini API error:', geminiResponse.status, errorText);
-      }
-    } catch (geminiError) {
-      console.error('Gemini TTS error:', geminiError.message);
-    }
-
-    console.log('⚠️ Gemini TTS failed, falling back to Google Cloud TTS');
-
-    // Fallback to Google Cloud Text-to-Speech (reliable, always works)
+    // Voice configuration based on language
     const voiceConfig = {
       'en-IN': { name: 'en-IN-Neural2-A', gender: 'FEMALE' },
       'hi-IN': { name: 'hi-IN-Neural2-A', gender: 'FEMALE' },
       'en-US': { name: 'en-US-Neural2-F', gender: 'FEMALE' }
     };
 
-    const selectedVoice = voiceConfig[language] || voiceConfig['en-IN'];
-    console.log(`Using Google Cloud voice: ${selectedVoice.name}`);
+    const voice = voiceConfig[language] || voiceConfig['en-IN'];
 
     const request = {
       input: { text },
       voice: {
         languageCode: language,
-        name: selectedVoice.name,
-        ssmlGender: selectedVoice.gender
+        name: voice.name,
+        ssmlGender: voice.gender
       },
       audioConfig: { 
         audioEncoding: 'MP3',
@@ -329,12 +309,10 @@ export const convertTextToSpeech = async (req, res) => {
       },
     };
 
-    const [cloudResponse] = await ttsClient.synthesizeSpeech(request);
-    console.log('✅ Google Cloud TTS succeeded');
+    const [response] = await ttsClient.synthesizeSpeech(request);
     
     res.set('Content-Type', 'audio/mpeg');
-    res.send(cloudResponse.audioContent);
-    
+    res.send(response.audioContent);
   } catch (error) {
     console.error('Text-to-speech error:', error);
     res.status(500).json({ 
@@ -390,7 +368,7 @@ export const voiceChat = async (req, res) => {
         history: [
           {
             role: "user",
-            parts: [{ text: SYSTEM_CONTEXT }],
+            parts: [{ text: SYSTEM_CONTEXTS }],
           },
           {
             role: "model",
