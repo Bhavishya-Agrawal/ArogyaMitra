@@ -1,3 +1,5 @@
+*/.env
+
 # Logs
 logs
 *.log
@@ -118,5 +120,4 @@ dist
 .pnp.*
 
 
-.env
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Node

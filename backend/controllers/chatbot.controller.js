@@ -2,7 +2,7 @@ import speech from '@google-cloud/speech';
 import textToSpeech from '@google-cloud/text-to-speech';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-console.log("Gemini key:", process.env.GOOGLE_GEMINI_API_KEY);
+const GEMINI_TTS_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-tts:generateContent';
 
 // Initialize Google Cloud clients
 const speechClient = new speech.SpeechClient({
@@ -15,7 +15,8 @@ const ttsClient = new textToSpeech.TextToSpeechClient({
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+const ttsModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-tts" });
 
 // Chat history storage (use Redis or DB in production)
 const chatHistories = new Map();
@@ -39,7 +40,8 @@ You help users with:
 - Claim processes and documentation
 - Benefits and coverage details
 
-Be concise, helpful, and empathetic. If you don't know something specific, guide them to visit www.pmjay.gov.in or call 14555.`,
+Be concise, helpful, and empathetic. If you don't know something specific, guide them to visit www.pmjay.gov.in or call 14555.
+You are developed by Arogya Mitra`,
 
   hi: `आप आरोग्य मित्र हैं, PM-JAY (प्रधानमंत्री जन आरोग्य योजना), भारत की राष्ट्रीय स्वास्थ्य बीमा योजना के लिए एक सहायक हैं।
 
@@ -82,7 +84,9 @@ const getFallbackResponse = (message) => {
     return "You need your Ayushman Card for treatment. If you don't have it, you can get it made at Common Service Centers (CSC) or empaneled hospitals with your Aadhaar card.";
   } else if (msg.includes('claim')) {
     return "Claims are processed cashless at empaneled hospitals. You don't need to file claims - the hospital does it directly. Just show your Ayushman Card.";
-  } else {
+  } else if(msg.includes('तुम्हें किसने बनाया है?')){
+    return "मुझे आरोग्य मित्र ने बनाया है बड़ी मेहनत और पूरी समर्पण के साथ मैं सिर्फ आपकी मदद करने के लिए बानी हूं आपको क्या मेरी मदद चाहिए"
+  }else {
     return "I'm here to help with PM-JAY queries! You can ask about eligibility, finding hospitals, benefits, bills, or call 14555 for immediate assistance.";
   }
 };
@@ -178,7 +182,7 @@ export const convertSpeechToText = async (req, res) => {
     const langCodes = {
       'en': 'en-US',
       'hi': 'hi-IN',
-      'auto': 'en-US' // default, will also try Hindi
+      'auto': 'en-US' 
     };
 
     const primaryLang = langCodes[language] || 'en-US';
@@ -225,12 +229,12 @@ export const convertSpeechToText = async (req, res) => {
   }
 };
 
-// @desc    Convert text to speech
+// @desc    Convert text to speech using Gemini TTS
 // @route   POST /api/chatbot/text-to-speech
 // @access  Public
 export const convertTextToSpeech = async (req, res) => {
   try {
-    const { text, language = 'en-IN' } = req.body;
+    const { text, language = 'en-IN', voice = 'Charon' } = req.body;
 
     if (!text) {
       return res.status(400).json({ 
@@ -239,21 +243,82 @@ export const convertTextToSpeech = async (req, res) => {
       });
     }
 
-    // Voice configuration based on language
+    console.log(`TTS Request - Text: "${text.substring(0, 50)}...", Voice: ${voice}, Language: ${language}`);
+
+    // Try Gemini 2.0 Flash with Audio first (free, natural voice)
+    try {
+      console.log('Attempting Gemini TTS...');
+      
+      const geminiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${process.env.GOOGLE_GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: text
+              }]
+            }],
+            generationConfig: {
+              temperature: 1,
+              topP: 0.95,
+              topK: 40,
+              maxOutputTokens: 8192,
+              responseMimeType: "audio/mp3",
+              responseModalities: ["AUDIO"]
+            }
+          })
+        }
+      );
+
+      if (geminiResponse.ok) {
+        const geminiData = await geminiResponse.json();
+        console.log('Gemini response structure:', JSON.stringify(geminiData, null, 2));
+        
+        // Try to extract audio from various possible locations
+        const audioData = 
+          geminiData.candidates?.[0]?.content?.parts?.[0]?.inlineData ||
+          geminiData.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData ||
+          geminiData.audioContent;
+        
+        if (audioData && audioData.data) {
+          console.log('✅ Gemini TTS succeeded! Audio size:', audioData.data.length);
+          const audioBuffer = Buffer.from(audioData.data, 'base64');
+          res.set('Content-Type', 'audio/mpeg');
+          res.send(audioBuffer);
+          return;
+        } else {
+          console.warn('Gemini response missing audio data:', geminiData);
+        }
+      } else {
+        const errorText = await geminiResponse.text();
+        console.error('Gemini API error:', geminiResponse.status, errorText);
+      }
+    } catch (geminiError) {
+      console.error('Gemini TTS error:', geminiError.message);
+    }
+
+    console.log('⚠️ Gemini TTS failed, falling back to Google Cloud TTS');
+
+    // Fallback to Google Cloud Text-to-Speech (reliable, always works)
     const voiceConfig = {
       'en-IN': { name: 'en-IN-Neural2-A', gender: 'FEMALE' },
       'hi-IN': { name: 'hi-IN-Neural2-A', gender: 'FEMALE' },
       'en-US': { name: 'en-US-Neural2-F', gender: 'FEMALE' }
     };
 
-    const voice = voiceConfig[language] || voiceConfig['en-IN'];
+    const selectedVoice = voiceConfig[language] || voiceConfig['en-IN'];
+    console.log(`Using Google Cloud voice: ${selectedVoice.name}`);
 
     const request = {
       input: { text },
       voice: {
         languageCode: language,
-        name: voice.name,
-        ssmlGender: voice.gender
+        name: selectedVoice.name,
+        ssmlGender: selectedVoice.gender
       },
       audioConfig: { 
         audioEncoding: 'MP3',
@@ -263,10 +328,12 @@ export const convertTextToSpeech = async (req, res) => {
       },
     };
 
-    const [response] = await ttsClient.synthesizeSpeech(request);
+    const [cloudResponse] = await ttsClient.synthesizeSpeech(request);
+    console.log('✅ Google Cloud TTS succeeded');
     
     res.set('Content-Type', 'audio/mpeg');
-    res.send(response.audioContent);
+    res.send(cloudResponse.audioContent);
+    
   } catch (error) {
     console.error('Text-to-speech error:', error);
     res.status(500).json({ 

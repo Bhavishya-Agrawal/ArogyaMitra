@@ -15,23 +15,15 @@ import voiceChatbotRoutes from "./routes/voiceChatbot.route.js";
 
 import { errorHandler } from "./middlewares/errorHandler.js";
 
-// Load environment variables
-
-
-// Initialize express app
 const app = express();
 
-// CORS configuration
 app.use(cors());
 
-// Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Connect to MongoDB
 connectDB();
 
-// Root endpoint
 app.get("/", (req, res) => {
   res.json({
     message: "Arogya Mitra Backend API",
